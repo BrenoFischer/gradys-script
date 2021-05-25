@@ -1,5 +1,4 @@
 import asyncio
-import random
 import aioserial
 import json
 import serial
@@ -20,18 +19,9 @@ def setup_logger(name, log_file, my_format, level=logging.INFO):
     return log
 
 
-async def rnd_sleep():
-    await asyncio.sleep(random.randint(1, 3))
-
-
-async def write_json_to_esp32():
-    seq = 0
-    while True:
-        seq += 1
-        data_dict = {"id": "1", "type": 1, "count": seq, "lat": 5.02, "lng": -9.02, "high": 10.3}
-        data = json.dumps(data_dict)
-        await aio_instance.write_async(data.encode())
-        await rnd_sleep()
+async def write_json_to_esp32(data_dict):
+    data = json.dumps(data_dict)
+    await aio_instance.write_async(data.encode())
 
 
 async def read_json(queue):
@@ -50,6 +40,29 @@ async def consume(queue):
         json_consumed = await queue.get()
         queue.task_done()
         print(f'Consumed: {json_consumed}')
+        json_type = json_consumed['type']
+        #Forward 1
+        if json_type == 24:
+            print("Forward-1")
+            data_dict = {"id": "4", "type": 25, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            await write_json_to_esp32(data_dict)
+        #Forward 2
+        elif json_type == 26: 
+            print("Forward 2")
+            data_dict = {"id": "4", "type": 27, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            await write_json_to_esp32(data_dict)
+        #Iniciar voo
+        elif json_type == 28:
+            print("Voo iniciado")
+            data_dict = {"id": "4", "type": 29, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            await write_json_to_esp32(data_dict)
+        #Abortar voo
+        elif json_type == 30:
+            print("Voo abortado")
+            data_dict = {"id": "4", "type": 31, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            await write_json_to_esp32(data_dict)
+        else:
+            print(f'JSON unknown: {json_consumed}')
         logger_info.info(json_consumed)
 
 
@@ -62,7 +75,7 @@ async def handle_disconnection_exception(queue):
 def connect():
     try:
         global aio_instance
-        aio_instance = aioserial.AioSerial(port='COM6', baudrate=115200)
+        aio_instance = aioserial.AioSerial(port='COM5', baudrate=115200)
         aio_instance.flush()
         return True
     except serial.serialutil.SerialException:
