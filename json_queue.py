@@ -103,9 +103,8 @@ async def main():
                 queue = asyncio.Queue()
                 reader = asyncio.create_task(read_json(queue))
                 consumer = asyncio.create_task(consume(queue))
-                #writer = asyncio.create_task(write_json_to_esp32())
-                tasks.extend([reader, consumer])#, writer])
-                await asyncio.gather(reader)#, writer)
+                tasks.extend([reader, consumer])
+                await asyncio.gather(reader)
                 await handle_disconnection_exception(queue)
                 is_connected = False
             except Exception:
