@@ -29,31 +29,59 @@ async def write_json_to_esp32(data_dict):
     await aio_instance.write_async(data.encode())
 
 
-def create_dict(id, type, seq):
-    return {"id": id, "type": type, "seq": seq, "lat": 5.02, "log": -9.02, "high": 10.3, "DATA": "0"}
+def create_dict(id, type, seq=0, lat=5.02, log=-9.02, high=10.3, data="0"):
+    return {"id": id, "type": type, "seq": seq, "lat": lat, "log": log, "high": high, "DATA": data}
 
 
 async def send_drone1_json():
     seq = 0
+    location_index = 0
+    locations = [
+        [-22.944825, -43.159063],
+        [-22.947512, -43.154300],
+        [-22.950713, -43.150309],
+        [-22.954705, -43.157690],
+        [-22.952768, -43.167088],
+        [-22.946524, -43.164599]
+    ]
     while True:
-        data_dict = create_dict(5, 35, seq)
+        lat = locations[location_index][0]
+        log = locations[location_index][1]
+        data_dict = create_dict(5, 35, seq=seq, lat=lat, log=log)
         await write_json_to_esp32(data_dict)
         print("Drone 1 json enviado.")
-        seq+=1
+        seq += 1
+        location_index += 1
         if seq >= 255:
             seq = 0
+        if location_index >= len(locations):
+            location_index = 0
         await sleep_async_rand()
 
 
 async def send_drone2_json():
     seq = 0
+    location_index = 0
+    locations=[
+        [-22.955258, -43.167389],
+        [-22.952413, -43.165758],
+        [-22.949962, -43.160394],
+        [-22.947196, -43.159192],
+        [-22.944311, -43.157304],
+        [-22.947162, -43.1643186]
+    ]
     while True:
-        data_dict = create_dict(6, 35, seq)
+        lat = locations[location_index][0]
+        log = locations[location_index][1]
+        data_dict = create_dict(6, 35, seq=seq, lat=lat, log=log)
         await write_json_to_esp32(data_dict)
         print("Drone 2 json enviado.")
-        seq+=1
+        seq += 1
+        location_index+=1
         if seq >= 255:
             seq = 0
+        if location_index >= len(locations):
+            location_index = 0
         await sleep_async_rand()
 
 
@@ -78,22 +106,22 @@ async def consume(queue):
         #Forward 1
         if json_type == 24:
             print("Forward-1")
-            data_dict = create_dict(4, 25, 0)
+            data_dict = create_dict(4, 25)
             await write_json_to_esp32(data_dict)
         #Forward 2
         elif json_type == 26: 
             print("Forward 2")
-            data_dict = create_dict(4, 27, 0)
+            data_dict = create_dict(4, 27)
             await write_json_to_esp32(data_dict)
         #Iniciar voo
         elif json_type == 28:
             print("Voo iniciado")
-            data_dict = create_dict(4, 29, 0)
+            data_dict = create_dict(4, 29)
             await write_json_to_esp32(data_dict)
         #Abortar voo
         elif json_type == 30:
             print("Voo abortado")
-            data_dict = create_dict(4, 31, 0)
+            data_dict = create_dict(4, 31)
             await write_json_to_esp32(data_dict)
         else:
             print(f'JSON unknown: {json_consumed}')
