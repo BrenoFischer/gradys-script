@@ -4,7 +4,9 @@ import json
 import serial
 import time
 import logging
+import configparser
 from datetime import datetime
+from random import randint
 
 
 def setup_logger(name, log_file, my_format, level=logging.INFO):
@@ -18,10 +20,42 @@ def setup_logger(name, log_file, my_format, level=logging.INFO):
 
     return log
 
+async def sleep_async_rand():
+    await asyncio.sleep(randint(4,8))
+
 
 async def write_json_to_esp32(data_dict):
     data = json.dumps(data_dict)
     await aio_instance.write_async(data.encode())
+
+
+def create_dict(id, type, seq):
+    return {"id": id, "type": type, "seq": seq, "lat": 5.02, "log": -9.02, "high": 10.3, "DATA": "0"}
+
+
+async def send_drone1_json():
+    seq = 0
+    while True:
+        data_dict = create_dict(5, 35, seq)
+        await write_json_to_esp32(data_dict)
+        print("Drone 1 json enviado.")
+        seq+=1
+        if seq >= 255:
+            seq = 0
+        await sleep_async_rand()
+
+
+async def send_drone2_json():
+    seq = 0
+    while True:
+        data_dict = create_dict(6, 35, seq)
+        await write_json_to_esp32(data_dict)
+        print("Drone 2 json enviado.")
+        seq+=1
+        if seq >= 255:
+            seq = 0
+        await sleep_async_rand()
+
 
 
 async def read_json(queue):
@@ -44,22 +78,22 @@ async def consume(queue):
         #Forward 1
         if json_type == 24:
             print("Forward-1")
-            data_dict = {"id": "4", "type": 25, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            data_dict = create_dict(4, 25, 0)
             await write_json_to_esp32(data_dict)
         #Forward 2
         elif json_type == 26: 
             print("Forward 2")
-            data_dict = {"id": "4", "type": 27, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            data_dict = create_dict(4, 27, 0)
             await write_json_to_esp32(data_dict)
         #Iniciar voo
         elif json_type == 28:
             print("Voo iniciado")
-            data_dict = {"id": "4", "type": 29, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            data_dict = create_dict(4, 29, 0)
             await write_json_to_esp32(data_dict)
         #Abortar voo
         elif json_type == 30:
             print("Voo abortado")
-            data_dict = {"id": "4", "type": 31, "count": 0, "lat": 5.02, "lng": -9.02, "high": 10.3}
+            data_dict = create_dict(4, 31, 0)
             await write_json_to_esp32(data_dict)
         else:
             print(f'JSON unknown: {json_consumed}')
@@ -73,9 +107,13 @@ async def handle_disconnection_exception(queue):
 
 
 def connect():
+    config = configparser.ConfigParser()
+    config.read('serial_config.ini')
     try:
         global aio_instance
-        aio_instance = aioserial.AioSerial(port='COM5', baudrate=115200)
+        port = config['serial_esp']['port']
+        baudrate = int(config['serial_esp']['baudrate'])
+        aio_instance = aioserial.AioSerial(port=port, baudrate=baudrate)
         aio_instance.flush()
         return True
     except serial.serialutil.SerialException:
@@ -103,7 +141,9 @@ async def main():
                 queue = asyncio.Queue()
                 reader = asyncio.create_task(read_json(queue))
                 consumer = asyncio.create_task(consume(queue))
-                tasks.extend([reader, consumer])
+                writer_drone1 = asyncio.create_task(send_drone1_json())
+                writer_drone2 = asyncio.create_task(send_drone2_json())
+                tasks.extend([reader, consumer, writer_drone1, writer_drone2])
                 await asyncio.gather(reader)
                 await handle_disconnection_exception(queue)
                 is_connected = False
