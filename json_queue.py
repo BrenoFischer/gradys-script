@@ -8,6 +8,8 @@ import configparser
 from datetime import datetime
 from random import randint
 
+TIME_DRONE_SLEEP = 2
+
 
 def setup_logger(name, log_file, my_format, level=logging.INFO):
     formatter = logging.Formatter(my_format)
@@ -24,8 +26,12 @@ async def sleep_async_rand():
     await asyncio.sleep(randint(4,8))
 
 
+async def sleep_async(seconds):
+    await asyncio.sleep(seconds)
+
+
 async def write_json_to_esp32(data_dict):
-    data = json.dumps(data_dict)
+    data = json.dumps(data_dict) + '\n'
     await aio_instance.write_async(data.encode())
 
 
@@ -37,52 +43,65 @@ async def send_drone1_json():
     seq = 0
     location_index = 0
     locations = [
-        [-22.944825, -43.159063],
-        [-22.947512, -43.154300],
-        [-22.950713, -43.150309],
-        [-22.954705, -43.157690],
-        [-22.952768, -43.167088],
-        [-22.946524, -43.164599]
+        [-22.956182, -43.155191],
+        [-22.955194, -43.154161],
+        [-22.954246, -43.153389],
+        [-22.953337, -43.152659],
+        [-22.952547, -43.151801],
+        [-22.951440, -43.150771],
+        [-22.952547, -43.151801],
+        [-22.953337, -43.152659],
+        [-22.954246, -43.153389],
+        [-22.955194, -43.154161],
+        [-22.956182, -43.155191]
     ]
+    await sleep_async(1)
     while True:
+        #await sleep_async_rand()
         lat = locations[location_index][0]
         log = locations[location_index][1]
         data_dict = create_dict(5, 35, seq=seq, lat=lat, log=log)
         await write_json_to_esp32(data_dict)
-        print("Drone 1 json enviado.")
+        print(data_dict)
         seq += 1
         location_index += 1
         if seq >= 255:
             seq = 0
         if location_index >= len(locations):
             location_index = 0
-        await sleep_async_rand()
+        await sleep_async(TIME_DRONE_SLEEP)
 
 
 async def send_drone2_json():
     seq = 0
     location_index = 0
     locations=[
-        [-22.955258, -43.167389],
-        [-22.952413, -43.165758],
-        [-22.949962, -43.160394],
-        [-22.947196, -43.159192],
-        [-22.944311, -43.157304],
-        [-22.947162, -43.1643186]
+        [-22.948318, -43.163860],
+        [-22.947923, -43.165963],
+        [-22.946105, -43.167422],
+        [-22.944169, -43.167251],
+        [-22.943428, -43.166006],
+        [-22.942598, -43.162830],
+        [-22.943112, -43.160985],
+        [-22.943625, -43.159569],
+        [-22.945917, -43.159311],
+        [-22.948012, -43.159526],
+        [-22.948852, -43.161843]
     ]
     while True:
+        #await sleep_async_rand()
         lat = locations[location_index][0]
         log = locations[location_index][1]
         data_dict = create_dict(6, 35, seq=seq, lat=lat, log=log)
         await write_json_to_esp32(data_dict)
-        print("Drone 2 json enviado.")
+        print(data_dict)
         seq += 1
         location_index+=1
         if seq >= 255:
             seq = 0
         if location_index >= len(locations):
             location_index = 0
-        await sleep_async_rand()
+        await sleep_async(TIME_DRONE_SLEEP)
 
 
 
@@ -90,6 +109,7 @@ async def read_json(queue):
     while True:
         raw_data: bytes = await aio_instance.readline_async()
         decoded_line = raw_data.decode('ascii')
+        print(decoded_line)
         try:
             json_line = json.loads(decoded_line)
             await queue.put(json_line)
@@ -172,7 +192,7 @@ async def main():
                 writer_drone1 = asyncio.create_task(send_drone1_json())
                 writer_drone2 = asyncio.create_task(send_drone2_json())
                 tasks.extend([reader, consumer, writer_drone1, writer_drone2])
-                await asyncio.gather(reader)
+                await asyncio.gather(*tasks)
                 await handle_disconnection_exception(queue)
                 is_connected = False
             except Exception:
