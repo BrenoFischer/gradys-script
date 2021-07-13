@@ -60,7 +60,7 @@ async def send_drone1_json():
         #await sleep_async_rand()
         lat = locations[location_index][0]
         log = locations[location_index][1]
-        data_dict = create_dict(5, 35, seq=seq, lat=lat, log=log)
+        data_dict = create_dict(5, 102, seq=seq, lat=lat, log=log)
         await write_json_to_esp32(data_dict)
         print(data_dict)
         seq += 1
@@ -92,7 +92,7 @@ async def send_drone2_json():
         #await sleep_async_rand()
         lat = locations[location_index][0]
         log = locations[location_index][1]
-        data_dict = create_dict(6, 35, seq=seq, lat=lat, log=log)
+        data_dict = create_dict(6, 102, seq=seq, lat=lat, log=log)
         await write_json_to_esp32(data_dict)
         print(data_dict)
         seq += 1
